@@ -2,89 +2,88 @@ import streamlit as st
 from groq import Groq
 from duckduckgo_search import DDGS
 
-# 1. إعداد الصفحة بالهوية الجديدة "AGORAM"
+# 1. Global Page Configuration
 st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide")
 
-# 2. ستايل "أݣورام" المغربي العصري (Modern Moroccan Style)
+# 2. Premium Global UI Style
 st.markdown("""
     <style>
-    /* الخلفية العامة */
+    /* Gradient Background for a modern look */
     .main { 
-        background-color: #f4f7f6; 
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         color: #1e3a8a; 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        font-family: 'Inter', sans-serif; 
     }
     
-    /* ستايل فقاعات الشات */
+    /* Global Chat Bubbles */
     .stChatMessage { 
-        background-color: #ffffff !important; 
-        border-radius: 15px; 
-        padding: 15px;
+        background-color: rgba(255, 255, 255, 0.9) !important; 
+        border-radius: 20px; 
+        padding: 20px;
         margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border-left: 5px solid #1e3a8a; 
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-left: 6px solid #1e3a8a; 
     }
     
-    /* العناوين */
+    /* Header Styling */
     h1 { 
-        color: #1e3a8a !important; 
+        background: -webkit-linear-gradient(#1e3a8a, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         font-weight: 800;
         text-align: center;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        font-size: 3rem !important;
+        letter-spacing: -1px;
     }
     
     .stCaption {
-        color: #b45309 !important; 
+        color: #64748b !important; 
         text-align: center;
-        font-weight: bold;
-        font-size: 1.1em;
+        font-weight: 500;
+        font-size: 1.2rem;
+        margin-top: -15px;
     }
 
-    /* زر الإدخال */
-    .stTextInput>div>div>input { 
-        border-radius: 20px;
-        border: 2px solid #1e3a8a;
-    }
-
-    /* ستايل الشريط الجانبي */
+    /* Sidebar Styling */
     [data-testid="stSidebar"] {
-        background-color: #1e3a8a;
+        background-color: #0f172a;
     }
-    
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
-        color: white !important;
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] p {
+        color: #f8fafc !important;
     }
 
-    /* ستايل زر القهوة */
+    /* Professional Action Button */
     .coffee-btn {
-        background-color: #b45309; 
+        background: linear-gradient(to right, #1e3a8a, #3b82f6);
         color: white !important; 
         border: none; 
-        padding: 12px; 
-        border-radius: 8px; 
+        padding: 15px; 
+        border-radius: 12px; 
         cursor: pointer;
-        font-weight: bold;
+        font-weight: 700;
         width: 100%;
         text-align: center;
         text-decoration: none;
-        display: inline-block;
-        transition: 0.3s;
+        display: block;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
     .coffee-btn:hover {
-        background-color: #d97706;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. إعداد الاتصال بـ Groq
+# 3. Core Engine Setup
 try:
     groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
 except:
-    st.error("Matrix Secrets Missing! Check your API Keys in Streamlit.")
+    st.error("Authentication Error: Please check your configuration.")
     st.stop()
 
-# دالة البحث في الويب
 def web_search(query):
     try:
         results = DDGS().text(query, max_results=3)
@@ -92,89 +91,80 @@ def web_search(query):
     except:
         return ""
 
-# 4. الشريط الجانبي (Sidebar)
+# 4. Sidebar Navigation
 with st.sidebar:
-    st.title("⚙️ لوحة التحكم")
+    st.title("AGORAM Settings")
     st.markdown("---")
-    st.subheader("☕ دعم الحكيم")
-    st.write("إذا كنت تستفيد من حكمة AGORAM، يمكنك دعم استمراريته:")
+    st.subheader("Support Development")
+    st.write("Help AGORAM evolve by supporting the project.")
     
-    # رابط PayPal الشخصي ديالك
-    my_paypal_link = "https://paypal.me/aipromptmoney" 
-    
-    st.markdown(f'<a href="{my_paypal_link}" target="_blank" class="coffee-btn">💰 صيفط قهيوة لـ AGORAM</a>', unsafe_allow_html=True)
+    # Your Personal PayPal Link
+    paypal_url = "https://paypal.me/aipromptmoney"
+    st.markdown(f'<a href="{paypal_url}" target="_blank" class="coffee-btn">⚡ Support AGORAM</a>', unsafe_allow_html=True)
     
     st.markdown("---")
-    if st.button("🗑️ مسح الذاكرة"):
+    if st.button("Clear Conversation"):
         st.session_state.messages = []
         st.rerun()
 
-# الواجهة الرئيسية
-st.title("🤖 AGORAM AI | أݣورام")
-st.caption("الرجل الحكيم: خبيرك في التقنية ومرشدك في الحياة")
+# 5. Main Application Header
+st.title("AGORAM AI")
+st.caption("Next-Gen Intelligence: Technical Mastery & Philosophical Depth")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض المحادثة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "image" in message: st.image(message["image"])
 
-# 5. منطق الاستجابة الذكي (Dynamic AI)
-if prompt := st.chat_input("تحدث مع الحكيم أݣورام..."):
+# 6. Interaction Logic
+if prompt := st.chat_input("Enter your query..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # تحليل نوع السؤال (تقني/واقعي أم فلسفي)
-    tech_keywords = ["كيفاش", "برمجة", "كود", "ثمن", "تقنية", "سعر", "شحال", "أخبار", "دير", "صاوب", "how", "code", "price", "tech", "news"]
-    is_tech_or_fact = any(word in prompt.lower() for word in tech_keywords)
+    # Context Analysis
+    tech_keywords = ["how", "code", "fix", "price", "news", "كيفاش", "برمجة", "كود", "ثمن"]
+    is_technical = any(word in prompt.lower() for word in tech_keywords)
 
     with st.chat_message("assistant"):
         context = ""
         image_url = None
         
-        # أ - البحث في الويب للمعلومات الآنية
-        if is_tech_or_fact:
-            with st.spinner("يتم الآن استشارة مصادر البيانات..."):
+        if is_technical:
+            with st.spinner("Analyzing knowledge base..."):
                 context = web_search(prompt)
         
-        # ب - توليد الصور
-        if any(word in prompt.lower() for word in ["صورة", "تخيل", "رسم", "draw", "imagine"]):
-            with st.spinner("يتم الآن رسم خيالك..."):
+        if any(word in prompt.lower() for word in ["image", "draw", "imagine", "vision", "صورة"]):
+            with st.spinner("Visualizing..."):
                 clean_prompt = prompt.replace(" ", "%20")
                 image_url = f"https://pollinations.ai/p/{clean_prompt}?width=1024&height=1024&model=flux"
                 st.image(image_url)
 
-        # ج - تحديد الشخصية بناءً على الحكمة الأمازيغية
-        if is_tech_or_fact:
-            system_instruction = "You are AGORAM AI, a professional tech expert. Provide accurate, helpful, and direct answers in Moroccan Darija. No philosophy."
-            current_temp = 0.2 
+        # Dynamic Personality Setup
+        if is_technical:
+            sys_msg = "You are AGORAM AI, a professional tech expert. Be direct, clear, and technical. Respond in the user's language."
+            temp = 0.2
         else:
-            system_instruction = "You are AGORAM AI, the wise tribal guide (Agoram). Use deep, respectful, and philosophical Moroccan Darija. Share wisdom about life and reality."
-            current_temp = 0.8 
+            sys_msg = "You are AGORAM AI, a wise philosophical guide. Use deep metaphors about reality and wisdom. Respond in the user's language."
+            temp = 0.8
 
         try:
-            user_input = f"Web Context: {context}\n\nUser Question: {prompt}" if context else prompt
-            
+            full_input = f"Context: {context}\n\nQuery: {prompt}" if context else prompt
             completion = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_instruction},
-                    *st.session_state.messages[:-1],
-                    {"role": "user", "content": user_input}
-                ],
-                temperature=current_temp
+                messages=[{"role": "system", "content": sys_msg}, *st.session_state.messages[:-1], {"role": "user", "content": full_input}],
+                temperature=temp
             )
             response = completion.choices[0].message.content
             st.markdown(response)
             
-            # حفظ في الذاكرة
+            # Save to memory
             msg_save = {"role": "assistant", "content": response}
             if image_url: msg_save["image"] = image_url
             st.session_state.messages.append(msg_save)
             
         except Exception as e:
-            st.error(f"عذراً، حدث خلل بسيط: {str(e)}")
+            st.error(f"System Glitch: {str(e)}")
