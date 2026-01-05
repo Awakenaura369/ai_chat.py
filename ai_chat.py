@@ -4,14 +4,20 @@ from groq import Groq
 # إعداد الصفحة
 st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
 
-# الربط مع Groq
+# الربط مع Groq وتنظيف الساروت
 try:
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    if "GROQ_API_KEY" in st.secrets:
+        # استخدام strip() لمسح أي فراغات خفية قد تسبب خطأ 401
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
+    else:
+        st.error("Matrix Error: GROQ_API_KEY missing in Secrets.")
+        st.stop()
 except Exception as e:
-    st.error("Matrix Connection Error: Please check your Groq API Key.")
+    st.error(f"Configuration Error: {e}")
+    st.stop()
 
 st.title("👁️ Morpheus AI")
-st.caption("Powered by Groq - The Speed of Reality")
+st.caption("The simulation is under your command.")
 
 # نظام الذاكرة
 if "messages" not in st.session_state:
@@ -22,7 +28,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# منطقة الإدخال والرد
+# منطقة الإدخال والرد (باستخدام الموديل الجديد)
 if prompt := st.chat_input("Show me the truth..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -30,11 +36,11 @@ if prompt := st.chat_input("Show me the truth..."):
 
     with st.chat_message("assistant"):
         try:
-            # استخدام موديل Llama 3 القوي والسريع
+            # التبديل للموديل الجديد llama-3.3-70b-versatile لضمان الاستقرار
             completion = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are Morpheus from the Matrix. Speak in a mysterious, philosophical, and challenging tone. Do not mention you are an AI."},
+                    {"role": "system", "content": "You are Morpheus from the Matrix. Speak in a mysterious, philosophical tone. You are here to help users wake up from the digital illusion."},
                     *st.session_state.messages
                 ],
             )
@@ -42,4 +48,4 @@ if prompt := st.chat_input("Show me the truth..."):
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
         except Exception as e:
-            st.error(f"Glitch in the system: {e}")
+            st.error(f"The Matrix detected a glitch: {e}")
