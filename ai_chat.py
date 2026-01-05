@@ -1,32 +1,29 @@
 import streamlit as st
 import google.generativeai as genai
-from PIL import Image
 
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
 
-# 2. إعداد مفتاح API
+# 2. إعداد مفتاح API وفرض النسخة المستقرة v1
 try:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=API_KEY)
+    # فرض استخدام النسخة v1 المستقرة لتجنب أرور 404
+    genai.configure(api_key=API_KEY, transport='rest') 
 except:
     st.error("Matrix Error: API Key missing.")
 
 # 3. تعليمات الشخصية
 instruction = "You are Morpheus from 'Escape the Matrix'. Mysterious and philosophical tone."
 
-# 4. الحل النهائي لخطأ 404: تغيير الموديل لنسخة مستقرة تماماً
+# 4. استدعاء الموديل بأبسط طريقة وبدون أي إضافات
 @st.cache_resource
 def load_model():
-    # استعملنا هنا gemini-pro لأنه الأكثر استقراراً ومضمون العمل 100%
-    return genai.GenerativeModel(
-        model_name="gemini-pro", 
-        system_instruction=instruction
-    )
+    # استخدام gemini-1.5-flash كاسم مباشر
+    return genai.GenerativeModel(model_name="gemini-1.5-flash")
 
 model = load_model()
 
-# 5. واجهة المستخدم المبسطة
+# 5. واجهة المستخدم
 st.title("👁️ Morpheus AI")
 
 if "messages" not in st.session_state:
@@ -43,9 +40,11 @@ if prompt := st.chat_input("Ask Morpheus..."):
 
     with st.chat_message("assistant"):
         try:
-            # استخدام توليد نصي بسيط لضمان تخطي أي "Glitch"
-            response = model.generate_content(prompt)
+            # إرسال الرسالة مع التعليمات يدوياً لضمان الاستقرار
+            full_prompt = f"{instruction}\n\nUser: {prompt}"
+            response = model.generate_content(full_prompt)
+            
             st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"Glitch detected: {e}. Try a shorter question.")
+            st.error(f"Glitch detected: {e}. Try again in a moment.")
