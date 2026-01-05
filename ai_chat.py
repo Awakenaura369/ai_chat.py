@@ -5,13 +5,10 @@ import google.generativeai as genai
 st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
 
 # 2. إعداد مفتاح API
-try:
-    if "GOOGLE_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    else:
-        st.error("Matrix Error: API Key missing in Secrets.")
-except Exception as e:
-    st.error(f"Configuration Error: {e}")
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    st.error("Matrix Error: API Key missing in Secrets.")
 
 # 3. واجهة المستخدم
 st.title("👁️ Morpheus AI")
@@ -24,7 +21,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. منطق الرد المبسط جداً لتجنب أرور 404 و v1beta
+# 4. الرد (أبسط طريقة ممكنة لتجنب 404)
 if prompt := st.chat_input("Ask Morpheus..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -32,22 +29,21 @@ if prompt := st.chat_input("Ask Morpheus..."):
 
     with st.chat_message("assistant"):
         try:
-            # كنعيطو للموديل بأبسط طريقة ممكنة
-            model = genai.GenerativeModel('gemini-pro')
+            # استخدام الموديل بدون أي إعدادات إضافية لضمان العمل
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            # دمج الشخصية وسط السؤال باش نتفادو مشاكل الإصدارات
-            personality = "You are Morpheus from 'Escape the Matrix'. Mysterious and philosophical tone."
-            full_query = f"{personality}\n\nUser: {prompt}"
-            
-            # طلب الرد
-            response = model.generate_content(full_query)
+            # إرسال النص مباشرة
+            response = model.generate_content(f"You are Morpheus. Answer this: {prompt}")
             
             if response.text:
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
-            else:
-                st.warning("The Matrix is silent. Try again.")
-                
         except Exception as e:
-            # عرض الأرور بطريقة واضحة إيلا باقي شي مشكل
-            st.error(f"Glitch detected: {str(e)}")
+            # محاولة أخيرة بموديل مختلف إذا فشل الأول
+            try:
+                model_backup = genai.GenerativeModel('gemini-pro')
+                response = model_backup.generate_content(prompt)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e2:
+                st.error(f"Matrix Glitch: {e2}")
