@@ -1,74 +1,90 @@
 import streamlit as st
 from groq import Groq
-import google.generativeai as genai
 
-# 1. إعداد الصفحة بألوان الماتريكس
-st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
+# 1. إعداد الصفحة وستايل الماتريكس (The Matrix Theme)
+st.set_page_config(page_title="Morpheus AI", page_icon="👁️", layout="centered")
 
-# 2. جلب المفاتيح وتأمينها
+st.markdown("""
+    <style>
+    .main {
+        background-color: #000000;
+        color: #00FF41;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    .stTextInput>div>div>input {
+        background-color: #0d0d0d;
+        color: #00FF41;
+        border: 1px solid #00FF41;
+    }
+    .stChatMessage {
+        background-color: #0a0a0a !important;
+        border-radius: 10px;
+        border: 0.5px solid #00FF41;
+        margin-bottom: 10px;
+    }
+    h1, h2, h3, p, span {
+        color: #00FF41 !important;
+        text-shadow: 0 0 5px #00FF41;
+    }
+    .stButton>button {
+        background-color: #00FF41;
+        color: black;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 2. الربط مع Groq
 try:
-    groq_api = st.secrets["GROQ_API_KEY"].strip()
-    google_api = st.secrets["GOOGLE_API_KEY"].strip()
-    
-    groq_client = Groq(api_key=groq_api)
-    genai.configure(api_key=google_api)
+    groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
 except Exception as e:
-    st.error("Matrix Secrets Error: Check your Keys.")
+    st.error("Matrix Secrets Error: Check your Key.")
     st.stop()
 
-st.title("👁️ Morpheus AI")
-st.caption("I can speak the truth and visualize your reality.")
+st.title("👁️ MORPHEUS AI")
+st.write("Welcome to the real world. I am your guide.")
 
-# 3. إدارة الذاكرة
+# ذاكرة المحادثة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض المحادثة السابقة
+# عرض الرسائل
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-        if "image_data" in message:
-            st.image(message["image_data"])
+        if "image" in message:
+            st.image(message["image"])
 
-# 4. منطقة الإدخال والرد
+# 3. منطقة الإدخال والرد
 if prompt := st.chat_input("Show me the truth..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # متغيرات لحفظ الرد
-        assistant_text = ""
-        image_to_show = None
+        # أ - توليد الصورة (Pollinations AI)
+        image_url = None
+        if any(word in prompt.lower() for word in ["صورة", "تخيل", "draw", "imagine", "image", "vision"]):
+            with st.spinner("Decoding image from the Matrix..."):
+                clean_prompt = prompt.replace(" ", "%20")
+                image_url = f"https://pollinations.ai/p/{clean_prompt}?width=1024&height=1024&model=flux"
+                st.image(image_url)
 
-        # أ- محاولة توليد صورة إذا طلب المستخدم ذلك
-        image_keywords = ["صورة", "تخيل", "draw", "imagine", "image", "vision", "وريني"]
-        if any(word in prompt.lower() for word in image_keywords):
-            try:
-                with st.spinner("🌌 Visualizing the Matrix..."):
-                    # استعمال الموديل القادر على فهم الصور ووصفها
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    # طلب توليد الصورة (هنا نستخدم محرك الصور المدمج إذا كان حسابك يدعمه)
-                    response = model.generate_content(f"Create a photorealistic image description for: {prompt}")
-                    assistant_text = f"I am visualizing your request: {response.text[:100]}..."
-                    # ملاحظة تقنية: إذا كان حسابك يدعم Imagen مباشرة سيظهر هنا، 
-                    # وإلا سيعطيك الوصف كما حدث معك سابقاً.
-            except Exception as e:
-                st.warning("Vision failed, but I can still speak.")
-
-        # ب- الرد النصي عبر Groq (دائماً حاضر)
+        # ب - الرد النصي (Groq)
         try:
-            chat_completion = groq_client.chat.completions.create(
+            completion = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are Morpheus from the Matrix. Philosophical tone. If the user asked for an image, acknowledge you are trying to show it to them."},
+                    {"role": "system", "content": "You are Morpheus. Speak in a mysterious, cool, and philosophical way. Use Matrix metaphors."},
                     *st.session_state.messages
                 ],
             )
-            assistant_text = chat_completion.choices[0].message.content
-            st.markdown(assistant_text)
+            response = completion.choices[0].message.content
+            st.markdown(response)
             
-            # حفظ في الذاكرة
-            st.session_state.messages.append({"role": "assistant", "content": assistant_text})
+            # حفظ الرسالة
+            new_msg = {"role": "assistant", "content": response}
+            if image_url: new_msg["image"] = image_url
+            st.session_state.messages.append(new_msg)
         except Exception as e:
-            st.error(f"Text Glitch: {e}")
+            st.error(f"Glitch: {e}")
