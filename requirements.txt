@@ -3,6 +3,5 @@ groq
 google-generativeai
 Pillow
 duckduckgo-search
-openai
 
 
