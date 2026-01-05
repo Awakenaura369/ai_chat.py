@@ -1,17 +1,17 @@
 import streamlit as st
 import google.generativeai as genai
-from google.generativeai.types import RequestOptions
 
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
 
-# 2. إعداد مفتاح API وفرض النسخة المستقرة v1
+# 2. إعداد مفتاح API
 try:
-    API_KEY = st.secrets["GOOGLE_API_KEY"]
-    # هاد السطر هو الساروت باش نحيدو أرور 404 بمرة
-    genai.configure(api_key=API_KEY)
-except:
-    st.error("Matrix Error: API Key missing.")
+    if "GOOGLE_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    else:
+        st.error("Matrix Error: API Key missing in Secrets.")
+except Exception as e:
+    st.error(f"Configuration Error: {e}")
 
 # 3. واجهة المستخدم
 st.title("👁️ Morpheus AI")
@@ -19,11 +19,12 @@ st.title("👁️ Morpheus AI")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# عرض المحادثة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. الرد بأسلوب مضمون 100%
+# 4. منطق الرد المبسط جداً لتجنب أرور 404 و v1beta
 if prompt := st.chat_input("Ask Morpheus..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -31,19 +32,22 @@ if prompt := st.chat_input("Ask Morpheus..."):
 
     with st.chat_message("assistant"):
         try:
-            # كنستعملو هاد الـ options باش نجبرو السيستيم يخدم بـ v1 المستقرة
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # كنعيطو للموديل بأبسط طريقة ممكنة
+            model = genai.GenerativeModel('gemini-pro')
             
-            instruction = "You are Morpheus from 'Escape the Matrix'. Mysterious and philosophical tone."
-            full_prompt = f"{instruction}\n\nUser Question: {prompt}"
+            # دمج الشخصية وسط السؤال باش نتفادو مشاكل الإصدارات
+            personality = "You are Morpheus from 'Escape the Matrix'. Mysterious and philosophical tone."
+            full_query = f"{personality}\n\nUser: {prompt}"
             
-            # فرض استخدام النسخة المستقرة v1 فكل طلب
-            response = model.generate_content(
-                full_prompt,
-                request_options=RequestOptions(api_version='v1')
-            )
+            # طلب الرد
+            response = model.generate_content(full_query)
             
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            if response.text:
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            else:
+                st.warning("The Matrix is silent. Try again.")
+                
         except Exception as e:
-            st.error(f"Glitch: {e}")
+            # عرض الأرور بطريقة واضحة إيلا باقي شي مشكل
+            st.error(f"Glitch detected: {str(e)}")
