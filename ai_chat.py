@@ -1,97 +1,88 @@
 import streamlit as st
 from groq import Groq
-import google.generativeai as genai
-from PIL import Image
-import io
+from duckduckgo_search import DDGS
 
-# 1. إعدادات الصفحة المتقدمة
-st.set_page_config(page_title="Morpheus AI Pro", page_icon="👁️", layout="wide")
+# 1. إعداد الصفحة (Matrix Pro Max)
+st.set_page_config(page_title="Morpheus Web-AI", page_icon="🌐", layout="wide")
 
-# ستايل الماتريكس المتطور
+# ستايل الماتريكس
 st.markdown("""
     <style>
     .main { background-color: #000000; color: #00FF41; font-family: 'Courier New', monospace; }
-    .stChatMessage { background-color: #0a0a0a !important; border: 1px solid #00FF41; border-radius: 15px; }
-    .stSidebar { background-color: #050505 !important; border-right: 1px solid #00FF41; }
-    h1, h2, h3 { color: #00FF41 !important; text-shadow: 0 0 10px #00FF41; }
-    .stFileUploader { border: 1px dashed #00FF41; border-radius: 10px; padding: 10px; }
+    .stChatMessage { background-color: #0a0a0a !important; border: 1px solid #00FF41; border-radius: 10px; }
+    h1, p { color: #00FF41 !important; text-shadow: 0 0 5px #00FF41; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. إدارة المفاتيح
+# 2. إعداد العقل (Groq)
 try:
     groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"].strip())
 except:
-    st.error("Missing API Keys in Secrets!")
+    st.error("Matrix Secrets Missing!")
     st.stop()
 
-# 3. الشريط الجانبي (Sidebar) للتحكم الاحترافي
-with st.sidebar:
-    st.title("⚙️ Control Panel")
-    model_option = st.selectbox("Choose Brain:", ["Llama-3.3-70b (Fast)", "Gemini-1.5-Flash (Vision)"])
-    temp = st.slider("Creativity Level:", 0.0, 1.0, 0.7)
-    
-    st.markdown("---")
-    uploaded_file = st.file_uploader("Upload Image or Document:", type=["pdf", "txt", "png", "jpg", "jpeg"])
-    
-    if st.button("🗑️ Clear Matrix Memory"):
-        st.session_state.messages = []
-        st.rerun()
+# دالة البحث في الويب
+def web_search(query):
+    try:
+        results = DDGS().text(query, max_results=3)
+        return "\n".join([f"Source: {r['href']} - {r['body']}" for r in results])
+    except:
+        return "Search failed."
 
-st.title("👁️ MORPHEUS AI PRO")
-st.caption("The ultimate interface to the real world.")
+st.title("👁️ MORPHEUS WEB-INTELLIGENCE")
+st.caption("I am now connected to the real-time data streams of the Matrix.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الرسائل
+# عرض الشات
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "image" in message: st.image(message["image"])
 
-# 4. منطق الإدخال والرد الاحترافي
-if prompt := st.chat_input("Enter your command..."):
+# 3. معالجة الطلب
+if prompt := st.chat_input("Ask anything, even about today's news..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        full_response = ""
+        context = ""
         image_url = None
         
-        # أ - معالجة الصور إيلا ترفعات
-        if uploaded_file and model_option == "Gemini-1.5-Flash (Vision)":
-            with st.spinner("Analyzing data..."):
-                img = Image.open(uploaded_file)
-                model_v = genai.GenerativeModel('gemini-1.5-flash')
-                res = model_v.generate_content([prompt, img])
-                full_response = res.text
-        
-        # ب - توليد الصور (Pollinations)
-        elif any(word in prompt.lower() for word in ["صورة", "تخيل", "draw", "imagine"]):
-            with st.spinner("Visualizing..."):
+        # أ - واش السؤال كيحتاج بحث في الإنترنت؟
+        search_keywords = ["أخبار", "اليوم", "نتائج", "سعر", "جديد", "news", "today", "search"]
+        if any(word in prompt.lower() for word in search_keywords):
+            with st.spinner("Searching the Web Matrix..."):
+                context = web_search(prompt)
+                st.info("🌐 Web Data Retrieved.")
+
+        # ب - واش محتاج صورة؟
+        if any(word in prompt.lower() for word in ["صورة", "تخيل", "draw", "imagine"]):
+            with st.spinner("Generating Vision..."):
                 clean_prompt = prompt.replace(" ", "%20")
                 image_url = f"https://pollinations.ai/p/{clean_prompt}?width=1024&height=1024&model=flux"
                 st.image(image_url)
-                full_response = "I have visualized your request from the Matrix data streams."
 
-        # ج - الرد النصي العادي (Groq)
-        else:
-            try:
-                chat_completion = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "system", "content": "You are Morpheus Pro. Expert, philosophical, and highly capable."}, *st.session_state.messages],
-                    temperature=temp
-                )
-                full_response = chat_completion.choices[0].message.content
-            except Exception as e:
-                full_response = f"Glitch detected: {str(e)}"
-
-        st.markdown(full_response)
-        
-        # حفظ في الذاكرة
-        msg_data = {"role": "assistant", "content": full_response}
-        if image_url: msg_data["image"] = image_url
-        st.session_state.messages.append(msg_data)
+        # ج - الرد النهائي (Groq + الويب إيلا كاين)
+        try:
+            # دمج معلومات الويب مع السؤال
+            final_prompt = f"Web Context: {context}\n\nUser Question: {prompt}" if context else prompt
+            
+            completion = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are Morpheus. Use the provided Web Context if available to give up-to-date answers. Keep your mysterious tone."},
+                    {"role": "user", "content": final_prompt}
+                ]
+            )
+            response = completion.choices[0].message.content
+            st.markdown(response)
+            
+            # حفظ
+            msg_data = {"role": "assistant", "content": response}
+            if image_url: msg_data["image"] = image_url
+            st.session_state.messages.append(msg_data)
+        except Exception as e:
+            st.error(f"Matrix Glitch: {e}")
