@@ -1,50 +1,47 @@
 import streamlit as st
 from groq import Groq
+import google.generativeai as genai
+from PIL import Image
+import io
 
-# 1. إعداد الصفحة وستايل الماتريكس (The Matrix Theme)
-st.set_page_config(page_title="Morpheus AI", page_icon="👁️", layout="centered")
+# 1. إعدادات الصفحة المتقدمة
+st.set_page_config(page_title="Morpheus AI Pro", page_icon="👁️", layout="wide")
 
+# ستايل الماتريكس المتطور
 st.markdown("""
     <style>
-    .main {
-        background-color: #000000;
-        color: #00FF41;
-        font-family: 'Courier New', Courier, monospace;
-    }
-    .stTextInput>div>div>input {
-        background-color: #0d0d0d;
-        color: #00FF41;
-        border: 1px solid #00FF41;
-    }
-    .stChatMessage {
-        background-color: #0a0a0a !important;
-        border-radius: 10px;
-        border: 0.5px solid #00FF41;
-        margin-bottom: 10px;
-    }
-    h1, h2, h3, p, span {
-        color: #00FF41 !important;
-        text-shadow: 0 0 5px #00FF41;
-    }
-    .stButton>button {
-        background-color: #00FF41;
-        color: black;
-        border-radius: 5px;
-    }
+    .main { background-color: #000000; color: #00FF41; font-family: 'Courier New', monospace; }
+    .stChatMessage { background-color: #0a0a0a !important; border: 1px solid #00FF41; border-radius: 15px; }
+    .stSidebar { background-color: #050505 !important; border-right: 1px solid #00FF41; }
+    h1, h2, h3 { color: #00FF41 !important; text-shadow: 0 0 10px #00FF41; }
+    .stFileUploader { border: 1px dashed #00FF41; border-radius: 10px; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. الربط مع Groq
+# 2. إدارة المفاتيح
 try:
     groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
-except Exception as e:
-    st.error("Matrix Secrets Error: Check your Key.")
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"].strip())
+except:
+    st.error("Missing API Keys in Secrets!")
     st.stop()
 
-st.title("👁️ MORPHEUS AI")
-st.write("Welcome to the real world. I am your guide.")
+# 3. الشريط الجانبي (Sidebar) للتحكم الاحترافي
+with st.sidebar:
+    st.title("⚙️ Control Panel")
+    model_option = st.selectbox("Choose Brain:", ["Llama-3.3-70b (Fast)", "Gemini-1.5-Flash (Vision)"])
+    temp = st.slider("Creativity Level:", 0.0, 1.0, 0.7)
+    
+    st.markdown("---")
+    uploaded_file = st.file_uploader("Upload Image or Document:", type=["pdf", "txt", "png", "jpg", "jpeg"])
+    
+    if st.button("🗑️ Clear Matrix Memory"):
+        st.session_state.messages = []
+        st.rerun()
 
-# ذاكرة المحادثة
+st.title("👁️ MORPHEUS AI PRO")
+st.caption("The ultimate interface to the real world.")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -52,39 +49,49 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-        if "image" in message:
-            st.image(message["image"])
+        if "image" in message: st.image(message["image"])
 
-# 3. منطقة الإدخال والرد
-if prompt := st.chat_input("Show me the truth..."):
+# 4. منطق الإدخال والرد الاحترافي
+if prompt := st.chat_input("Enter your command..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # أ - توليد الصورة (Pollinations AI)
+        full_response = ""
         image_url = None
-        if any(word in prompt.lower() for word in ["صورة", "تخيل", "draw", "imagine", "image", "vision"]):
-            with st.spinner("Decoding image from the Matrix..."):
+        
+        # أ - معالجة الصور إيلا ترفعات
+        if uploaded_file and model_option == "Gemini-1.5-Flash (Vision)":
+            with st.spinner("Analyzing data..."):
+                img = Image.open(uploaded_file)
+                model_v = genai.GenerativeModel('gemini-1.5-flash')
+                res = model_v.generate_content([prompt, img])
+                full_response = res.text
+        
+        # ب - توليد الصور (Pollinations)
+        elif any(word in prompt.lower() for word in ["صورة", "تخيل", "draw", "imagine"]):
+            with st.spinner("Visualizing..."):
                 clean_prompt = prompt.replace(" ", "%20")
                 image_url = f"https://pollinations.ai/p/{clean_prompt}?width=1024&height=1024&model=flux"
                 st.image(image_url)
+                full_response = "I have visualized your request from the Matrix data streams."
 
-        # ب - الرد النصي (Groq)
-        try:
-            completion = groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": "You are Morpheus. Speak in a mysterious, cool, and philosophical way. Use Matrix metaphors."},
-                    *st.session_state.messages
-                ],
-            )
-            response = completion.choices[0].message.content
-            st.markdown(response)
-            
-            # حفظ الرسالة
-            new_msg = {"role": "assistant", "content": response}
-            if image_url: new_msg["image"] = image_url
-            st.session_state.messages.append(new_msg)
-        except Exception as e:
-            st.error(f"Glitch: {e}")
+        # ج - الرد النصي العادي (Groq)
+        else:
+            try:
+                chat_completion = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "system", "content": "You are Morpheus Pro. Expert, philosophical, and highly capable."}, *st.session_state.messages],
+                    temperature=temp
+                )
+                full_response = chat_completion.choices[0].message.content
+            except Exception as e:
+                full_response = f"Glitch detected: {str(e)}"
+
+        st.markdown(full_response)
+        
+        # حفظ في الذاكرة
+        msg_data = {"role": "assistant", "content": full_response}
+        if image_url: msg_data["image"] = image_url
+        st.session_state.messages.append(msg_data)
