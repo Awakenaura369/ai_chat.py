@@ -1,43 +1,45 @@
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 
-# 1. إعدادات الصفحة
+# إعداد الصفحة
 st.set_page_config(page_title="Morpheus AI", page_icon="👁️")
 
-# 2. الربط مع Google (أبسط طريقة)
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-else:
-    st.error("Matrix Error: API Key missing in Streamlit Secrets.")
+# الربط مع Groq
+try:
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+except Exception as e:
+    st.error("Matrix Connection Error: Please check your Groq API Key.")
 
 st.title("👁️ Morpheus AI")
-st.markdown("---")
+st.caption("Powered by Groq - The Speed of Reality")
 
-# 3. نظام الذاكرة (Session State)
+# نظام الذاكرة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الشات
+# عرض المحادثة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. منطق الرد
-if prompt := st.chat_input("Speak, seeker..."):
+# منطقة الإدخال والرد
+if prompt := st.chat_input("Show me the truth..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # استعمال الموديل الخام بدون أي تعقيدات
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            # تعليمات الشخصية مدمجة فالسؤال
-            instruction = "You are Morpheus from 'Escape the Matrix'. Mysterious tone."
-            response = model.generate_content(f"{instruction}\nUser: {prompt}")
-            
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            # استخدام موديل Llama 3 القوي والسريع
+            completion = client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[
+                    {"role": "system", "content": "You are Morpheus from the Matrix. Speak in a mysterious, philosophical, and challenging tone. Do not mention you are an AI."},
+                    *st.session_state.messages
+                ],
+            )
+            response = completion.choices[0].message.content
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
         except Exception as e:
-            st.error(f"Glitch: {e}")
+            st.error(f"Glitch in the system: {e}")
