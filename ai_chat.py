@@ -5,111 +5,55 @@ from duckduckgo_search import DDGS
 # 1. Global Page Configuration
 st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide")
 
-# 2. Premium Global UI Style
+# 2. Professional Dark Theme (ChatGPT Inspired)
 st.markdown("""
     <style>
-    /* Gradient Background for a modern look */
-    .main { 
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        color: #1e3a8a; 
-        font-family: 'Inter', sans-serif; 
+    .main { background-color: #212121; color: #ececf1; font-family: sans-serif; }
+    .stChatMessage[data-testid="stChatMessageUser"] {
+        background-color: #2f2f2f !important; border-radius: 15px; color: #ececf1 !important;
     }
-    
-    /* Global Chat Bubbles */
-    .stChatMessage { 
-        background-color: rgba(255, 255, 255, 0.9) !important; 
-        border-radius: 20px; 
-        padding: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-left: 6px solid #1e3a8a; 
+    .stChatMessage[data-testid="stChatMessageAssistant"] {
+        background-color: transparent !important; color: #ececf1 !important;
     }
-    
-    /* Header Styling */
-    h1 { 
-        background: -webkit-linear-gradient(#1e3a8a, #3b82f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800;
-        text-align: center;
-        font-size: 3rem !important;
-        letter-spacing: -1px;
-    }
-    
-    .stCaption {
-        color: #64748b !important; 
-        text-align: center;
-        font-weight: 500;
-        font-size: 1.2rem;
-        margin-top: -15px;
-    }
-
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: #0f172a;
-    }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] p {
-        color: #f8fafc !important;
-    }
-
-    /* Professional Action Button */
+    p, span, div, label { color: #ececf1 !important; }
+    h1 { color: #ffffff !important; text-align: center; font-weight: 600; }
+    .stCaption { color: #b4b4b4 !important; text-align: center; }
+    .stTextInput>div>div>input { background-color: #353541; color: white; border: 1px solid #565869; border-radius: 10px; }
+    [data-testid="stSidebar"] { background-color: #171717; }
     .coffee-btn {
-        background: linear-gradient(to right, #1e3a8a, #3b82f6);
-        color: white !important; 
-        border: none; 
-        padding: 15px; 
-        border-radius: 12px; 
-        cursor: pointer;
-        font-weight: 700;
-        width: 100%;
-        text-align: center;
-        text-decoration: none;
-        display: block;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-    }
-    .coffee-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        background-color: #10a37f; color: white !important; padding: 12px; border-radius: 8px;
+        text-align: center; text-decoration: none; display: block; font-weight: 600;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Core Engine Setup
+# 3. Core Engine
 try:
     groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"].strip())
 except:
-    st.error("Authentication Error: Please check your configuration.")
+    st.error("Authentication Error: Check your secrets.")
     st.stop()
 
 def web_search(query):
     try:
         results = DDGS().text(query, max_results=3)
         return "\n".join([f"Source: {r['href']} - {r['body']}" for r in results])
-    except:
-        return ""
+    except: return ""
 
-# 4. Sidebar Navigation
+# 4. Sidebar
 with st.sidebar:
     st.title("AGORAM Settings")
     st.markdown("---")
-    st.subheader("Support Development")
-    st.write("Help AGORAM evolve by supporting the project.")
-    
-    # Your Personal PayPal Link
     paypal_url = "https://paypal.me/aipromptmoney"
     st.markdown(f'<a href="{paypal_url}" target="_blank" class="coffee-btn">⚡ Support AGORAM</a>', unsafe_allow_html=True)
-    
     st.markdown("---")
     if st.button("Clear Conversation"):
         st.session_state.messages = []
         st.rerun()
 
-# 5. Main Application Header
+# 5. UI Header
 st.title("AGORAM AI")
-st.caption("Next-Gen Intelligence: Technical Mastery & Philosophical Depth")
+st.caption("Universal Intelligence: Helpful, Clear & Wise")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -119,36 +63,36 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
         if "image" in message: st.image(message["image"])
 
-# 6. Interaction Logic
-if prompt := st.chat_input("Enter your query..."):
+# 6. Logic Turn
+if prompt := st.chat_input("How can I help you today?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Context Analysis
+    # التحقق من نوع السؤال لضبط الشخصية
+    greetings = ["سلام", "لباس", "مرحبا", "hi", "hello", "hey"]
     tech_keywords = ["how", "code", "fix", "price", "news", "كيفاش", "برمجة", "كود", "ثمن"]
-    is_technical = any(word in prompt.lower() for word in tech_keywords)
+    
+    is_general_or_tech = any(word in prompt.lower() for word in (greetings + tech_keywords))
 
     with st.chat_message("assistant"):
         context = ""
         image_url = None
         
-        if is_technical:
-            with st.spinner("Analyzing knowledge base..."):
-                context = web_search(prompt)
+        if any(word in prompt.lower() for word in tech_keywords):
+            with st.spinner("Searching..."): context = web_search(prompt)
         
-        if any(word in prompt.lower() for word in ["image", "draw", "imagine", "vision", "صورة"]):
+        if any(word in prompt.lower() for word in ["image", "draw", "imagine", "صورة"]):
             with st.spinner("Visualizing..."):
-                clean_prompt = prompt.replace(" ", "%20")
-                image_url = f"https://pollinations.ai/p/{clean_prompt}?width=1024&height=1024&model=flux"
+                image_url = f"https://pollinations.ai/p/{prompt.replace(' ', '%20')}?width=1024&height=1024&model=flux"
                 st.image(image_url)
 
-        # Dynamic Personality Setup
-        if is_technical:
-            sys_msg = "You are AGORAM AI, a professional tech expert. Be direct, clear, and technical. Respond in the user's language."
-            temp = 0.2
+        # التبديل بين المساعد العادي والحكيم
+        if is_general_or_tech:
+            sys_msg = "You are AGORAM AI, a helpful and direct assistant. Respond naturally and clearly in the user's language."
+            temp = 0.5
         else:
-            sys_msg = "You are AGORAM AI, a wise philosophical guide. Use deep metaphors about reality and wisdom. Respond in the user's language."
+            sys_msg = "You are AGORAM AI, a wise guide. Provide deep and philosophical insights."
             temp = 0.8
 
         try:
@@ -161,10 +105,8 @@ if prompt := st.chat_input("Enter your query..."):
             response = completion.choices[0].message.content
             st.markdown(response)
             
-            # Save to memory
             msg_save = {"role": "assistant", "content": response}
             if image_url: msg_save["image"] = image_url
             st.session_state.messages.append(msg_save)
-            
         except Exception as e:
-            st.error(f"System Glitch: {str(e)}")
+            st.error(f"Error: {str(e)}")
