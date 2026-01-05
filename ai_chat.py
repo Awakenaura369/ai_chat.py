@@ -1,37 +1,36 @@
 import streamlit as st
 from groq import Groq
 
-# 1. إعدادات الصفحة (Design Black & Red)
-st.set_page_config(page_title="AGORAM AI", page_icon="🤖")
+# إعدادات الصفحة للموبيل (Mobile First)
+st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="centered")
 
 st.markdown("""
     <style>
+    /* تحسين الألوان وتصغير المساحات للموبيل */
     .stApp { background-color: #0E1117; color: white; }
-    /* تنسيق الرسائل باش ما تبقاش لاصقة فـ الجناب */
     .stChatMessage { 
-        border-radius: 15px; 
-        margin: 10px 5%; 
-        border: 1px solid #333; 
+        border-radius: 12px; 
+        margin: 5px 1%; 
+        border: 1px solid #2d2d2d; 
     }
     .stChatMessage[data-testid="stChatMessageAssistant"] { 
-        border-left: 5px solid #ff4b4b; 
-        background-color: #1a1a1a; 
+        border-left: 4px solid #ff4b4b; 
+        background-color: #161b22; 
     }
-    /* تحسين شكل الكتابة */
-    .stMarkdown p { font-size: 1.1rem; line-height: 1.6; }
+    /* تصغير الخط باش ما يعمرش الشاشة */
+    .stMarkdown p { font-size: 0.95rem !important; line-height: 1.5; }
+    h1 { font-size: 1.4rem !important; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("AGORAM AI 🤖")
-st.caption("Multilingual Edition: Darija & English | Powered by Llama 3.3")
 
-# 2. الربط مع الساروت (Groq)
+# الربط مع Groq بالساروت اللي عندك
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception as e:
-    st.error(f"Secret Key Error: {e}")
+    st.error("Check your API Key in Secrets.")
 
-# 3. نظام الذاكرة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -39,20 +38,21 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. معالجة الهضرة (الدارجة + الإنجليزية)
-if prompt := st.chat_input("Ask AGORAM AI anything..."):
+if prompt := st.chat_input("Ask me anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # تعليمات صارمة للموديل باش يجاوب بجوج لغات ديما
+            # هادي هي "العقلية" اللي طلبتي: كيتفاعل مع لغة السائل
             system_instruction = """
-            You are AGORAM AI. You must ALWAYS provide your answer in two parts:
-            1. Response in Moroccan Darija (Maghrebi Arabic).
-            2. A 'Technical Summary' in English.
-            Use horizontal lines (---) to separate them clearly.
+            You are AGORAM AI, a highly intelligent and flexible assistant. 
+            Instruction: Respond in the SAME language the user uses. 
+            - If they speak Darija, answer in Darija. 
+            - If they speak English, answer in English. 
+            - Match their tone and professional level (Engineer, Doctor, Creator, etc.).
+            Be concise and don't repeat the answer in other languages unless asked.
             """
             
             chat_completion = client.chat.completions.create(
@@ -60,12 +60,11 @@ if prompt := st.chat_input("Ask AGORAM AI anything..."):
                     {"role": "system", "content": system_instruction},
                     *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
                 ],
-                model="llama-3.3-70b-versatile", # أحدث موديل شغال حالياً
+                model="llama-3.3-70b-versatile", # الموديل الأقوى حالياً
             )
             
-            full_response = chat_completion.choices[0].message.content
-            st.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
+            ans = chat_completion.choices[0].message.content
+            st.markdown(ans)
+            st.session_state.messages.append({"role": "assistant", "content": ans})
         except Exception as e:
-            st.error(f"Matrix Error: {str(e)}")
+            st.error(f"Error: {e}")
