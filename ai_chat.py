@@ -1,90 +1,115 @@
 import streamlit as st
-import time
+from groq import Groq
 
-# إعدادات الصفحة
+# 1. إعدادات الصفحة - جعل السايدبار مفتوح افتراضياً
 st.set_page_config(
     page_title="AGORAM AI",
     page_icon="🤖",
     layout="wide",
-    initial_sidebar_state="expanded" # القائمة الجانبية كتبان من الدقة الأولى
+    initial_sidebar_state="expanded"
 )
 
-# تصميم الـ CSS لتعديل الألوان والواجهة
+# 2. تصميم الـ CSS (العنوان بالأزرق، السايدبار، وتوسيع العرض)
 st.markdown("""
     <style>
-    /* تغيير لون العنوان الرئيسي للأزرق الفاتح */
+    .stApp { background-color: #0E1117; color: white; }
+    
+    /* العنوان بالأزرق الفاتح كما طلبت */
     .main-title {
-        font-size: 2.5rem;
+        font-size: 2.8rem;
         font-weight: bold;
-        color: #00CCFF; /* اللون الأزرق الفاتح */
+        color: #00CCFF; 
         text-align: center;
         margin-top: -50px;
-        margin-bottom: 25px;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 10px rgba(0, 204, 255, 0.3);
+    }
+
+    /* توسيع الحاوية لتملأ الشاشة */
+    [data-testid="stAppViewBlockContainer"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 1.5rem !important;
+    }
+
+    /* إظهار سهم السايدبار في الموبيل */
+    [data-testid="stSidebarNav"] { display: block !important; }
+
+    /* زر PayPal الاحترافي */
+    .support-btn {
+        display: block; width: 100%; text-align: center; background-color: #0070ba; 
+        color: white !important; padding: 12px; border-radius: 10px; 
+        text-decoration: none; font-weight: bold; margin: 10px 0;
     }
     
-    /* تحسين شكل القائمة الجانبية */
-    [data-testid="stSidebar"] {
-        background-color: #111b21; /* لون داكن احترافي */
-        border-right: 1px solid #00CCFF; /* خط أزرق خفيف في الجنب */
-    }
-
-    /* تعديل مساحة المحتوى */
-    [data-testid="stAppViewBlockContainer"] {
-        padding-top: 3rem !important;
-        max-width: 900px !important;
-        margin: auto;
-    }
-
-    /* شكل فقاعات الدردشة */
-    .stChatMessage {
-        border-radius: 15px;
-        padding: 10px;
-        margin-bottom: 10px;
-    }
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) ---
+# --- القائمة الجانبية (Sidebar) ودمج الموديلات من Groq ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712035.png", width=100) # أيقونة اختيارية
-    st.title("الإعدادات")
-    st.info("مرحباً بك في AGORAM AI. يمكنك مسح المحادثة أو تغيير الإعدادات من هنا.")
-    if st.button("🗑️ مسح المحادثة"):
-        st.session_state.messages = []
-        st.rerun()
+    st.markdown('<h1 style="color: #00CCFF;">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
+    st.header("⚙️ الإعدادات الذكية")
+    
+    # دمج الموديلات اللي ظهرت في صورة Groq
+    model_option = st.selectbox(
+        "اختر عقل الذكاء الاصطناعي:",
+        (
+            "Llama 3.3 70B (الأقوى والأسرع)", 
+            "Qwen 2.5 32B (خبير البرمجة)", 
+            "Llama 3.2 11B Vision (رؤية الصور)",
+            "Whisper Large v3 (تحويل الصوت لنص)"
+        )
+    )
+    
+    # ربط الاختيارات بأسماء النماذج الحقيقية في Groq
+    model_mapping = {
+        "Llama 3.3 70B (الأقوى والأسرع)": "llama-3.3-70b-versatile",
+        "Qwen 2.5 32B (خبير البرمجة)": "qwen-2.5-32b",
+        "Llama 3.2 11B Vision (رؤية الصور)": "llama-3.2-11b-vision-preview",
+        "Whisper Large v3 (تحويل الصوت لنص)": "whisper-large-v3"
+    }
+    selected_model = model_mapping[model_option]
+    
+    st.divider()
+    st.markdown("### دعم استمرارية المشروع")
+    st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ دعم عبر PayPal</a>', unsafe_allow_html=True)
 
-# --- واجهة التطبيق الرئيسية ---
+# عرض العنوان الرئيسي بالأزرق
 st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
 
-# تهيئة سجل الرسائل إذا كان فارغاً
+# 3. الربط مع Groq API
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الرسائل السابقة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# استقبال رسالة المستخدم
-if prompt := st.chat_input("كيف يمكنني مساعدتك اليوم؟"):
-    # إضافة رسالة المستخدم للسجل
+# 4. معالجة الدردشة
+if prompt := st.chat_input("سول أݣورام أو اطلب مساعدة..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # محاكاة رد الذكاء الاصطناعي (أورام AI)
     with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        # هنا يمكنك ربط الكود بـ API الخاص بـ Gemini أو أي نموذج آخر
-        assistant_response = f"أنا AGORAM AI، قمت باستلام رسالتك: '{prompt}'. كيف يمكنني تطوير خدمتي لك؟"
-        
-        for chunk in assistant_response.split():
-            full_response += chunk + " "
-            time.sleep(0.05)
-            message_placeholder.markdown(full_response + "▌")
-        message_placeholder.markdown(full_response)
-    
-    # إضافة رد المساعد للسجل
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+        try:
+            # تعليمات النظام لضمان ذكاء أݣورام
+            system_msg = "You are AGORAM AI. Answer concisely in the user's language. Be smart and professional."
+            
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+                ],
+                model=selected_model, # الموديل المختار من القائمة
+            )
+            
+            ans = chat_completion.choices[0].message.content
+            st.markdown(ans)
+            st.session_state.messages.append({"role": "assistant", "content": ans})
+        except Exception as e:
+            st.error(f"Error: {e}")
