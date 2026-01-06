@@ -9,12 +9,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. تصميم الـ CSS (العنوان بالأزرق، السايدبار، وتوسيع العرض)
+# 2. تصميم الـ CSS (العنوان بالأزرق الفاتح والواجهة)
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: white; }
     
-    /* العنوان بالأزرق الفاتح كما طلبت */
+    /* العنوان بالأزرق الفاتح */
     .main-title {
         font-size: 2.8rem;
         font-weight: bold;
@@ -76,7 +76,7 @@ with st.sidebar:
     st.markdown("### دعم استمرارية المشروع")
     st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ دعم عبر PayPal</a>', unsafe_allow_html=True)
 
-# عرض العنوان الرئيسي بالأزرق
+# عرض العنوان الرئيسي بالأزرق الفاتح
 st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
 
 # 3. الربط مع Groq API
