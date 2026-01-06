@@ -2,75 +2,108 @@ import streamlit as st
 from groq import Groq
 from supabase import create_client, Client
 
-# 1. إعدادات Supabase و Groq
+# 1. الربط مع Supabase (تأكد أن السوارت محطوطين فـ Streamlit Secrets)
 url: str = st.secrets["SUPABASE_URL"]
 key: str = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# إعداد الصفحة لتكون مهيبة
+# إعداد الصفحة
 st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="centered")
 
-# --- وظائف قاعدة البيانات ---
-def load_history():
-    try:
-        res = supabase.table("chat_history").select("*").order("created_at").execute()
-        return res.data
-    except: return []
-
-def save_to_db(u_msg, a_res):
-    try:
-        supabase.table("chat_history").insert({"message": u_msg, "response": a_res}).execute()
-    except: pass
-
-# --- واجهة المستخدم المهيبة (التصميم الأصلي) ---
+# --- الستايل المهيب (CSS) ---
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
+    .stApp { background-color: #0e1117; }
     .title-text {
         text-align: center;
         color: #00CCFF;
-        font-size: 50px;
+        font-size: 55px;
         font-weight: bold;
-        text-shadow: 2px 2px 10px #00CCFF;
+        text-shadow: 0px 0px 20px #00CCFF;
         margin-bottom: 5px;
     }
-    .sub-text {
+    .beta-text {
         text-align: center;
-        color: #888;
+        color: #8892b0;
         font-size: 18px;
-        margin-bottom: 30px;
+        font-style: italic;
+        margin-bottom: 25px;
     }
+    /* ستايل الميساجات */
+    .stChatMessage { border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="title-text">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-text">The Most Powerful AI in Your Hands</p>', unsafe_allow_html=True)
+# --- نظام تسجيل الدخول (Authentication) ---
+if "user" not in st.session_state:
+    st.markdown('<h1 class="title-text">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["🔐 Login", "✨ Sign Up"])
+    
+    with tab1:
+        email = st.text_input("Email", placeholder="yourname@example.com")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.rerun()
+            except: st.error("Login failed. Check your email or password.")
+            
+    with tab2:
+        new_email = st.text_input("New Email", placeholder="yourname@example.com")
+        new_password = st.text_input("Create Password", type="password")
+        if st.button("Create Account"):
+            try:
+                supabase.auth.sign_up({"email": new_email, "password": new_password})
+                st.success("Account created! Check your email for confirmation link.")
+            except: st.error("Signup failed. Try again.")
+    st.stop()
 
-# زر "قهيوة" (Buy Me a Coffee)
+# --- واجهة المستخدم بعد الدخول ---
+user = st.session_state.user
+
+with st.sidebar:
+    st.title("📂 Workspace")
+    st.write(f"Logged in: **{user.email}**")
+    if st.button("🚪 Logout"):
+        supabase.auth.sign_out()
+        del st.session_state.user
+        st.rerun()
+    st.divider()
+    if st.button("➕ New Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+# التصميم المهيب للعنوان
+st.markdown('<h1 class="title-text">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
+st.markdown('<p class="beta-text">🚀 Beta Version: Currently testing our AI models. More features coming soon!</p>', unsafe_allow_html=True)
+
+# زر القهيوة الأصفر
 st.markdown("""
-    <div style="text-align: center; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: center; margin-bottom: 30px;">
         <a href="https://www.buymeacoffee.com/yourlink" target="_blank">
-            <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 145px !important;" >
+            <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a Coffee&emoji=☕&slug=yourlink&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a Coffee">
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-# --- منطق المحادثة ---
+# --- جلب الذاكرة الشخصية من Supabase ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # تحميل الهضرة من الداتابايز عند أول دخول
-    db_history = load_history()
-    for item in db_history:
-        st.session_state.messages.append({"role": "user", "content": item["message"]})
-        st.session_state.messages.append({"role": "assistant", "content": item["response"]})
+    try:
+        # كنجيبو غير الميساجات ديال المستخدم اللي داخل دابا
+        db_res = supabase.table("chat_history").select("*").eq("user_id", user.id).order("created_at").execute()
+        for m in db_res.data:
+            st.session_state.messages.append({"role": "user", "content": m["message"]})
+            st.session_state.messages.append({"role": "assistant", "content": m["response"]})
+    except: pass
 
-# عرض المحادثات
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# عرض المحادثة
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# إدخال ميساج جديد
+# إرسال ميساج جديد
 if prompt := st.chat_input("Ask AGORAM anything..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -86,6 +119,12 @@ if prompt := st.chat_input("Ask AGORAM anything..."):
         response = completion.choices[0].message.content
         st.markdown(response)
         
-        # حفظ فـ Supabase
-        save_to_db(prompt, response)
+        # حفظ فـ الداتابايز مع user_id
+        try:
+            supabase.table("chat_history").insert({
+                "message": prompt, 
+                "response": response, 
+                "user_id": user.id
+            }).execute()
+        except: pass
         st.session_state.messages.append({"role": "assistant", "content": response})
