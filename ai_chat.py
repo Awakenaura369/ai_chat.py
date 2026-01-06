@@ -1,42 +1,32 @@
 import streamlit as st
 from groq import Groq
 
-# 1. هادي هي أهم حاجة: لازم تكون أول سطر برمجي باش يتحل السايدبار
-st.set_page_config(
-    page_title="AGORAM AI",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded" 
-)
+# 1. إعدادات الصفحة - ضروري تكون أول سطر
+st.set_page_config(page_title="AGORAM AI", layout="wide")
 
-# 2. تصميم الواجهة (العنوان بالأزرق الفاتح + تحسين المسافات)
+# 2. كود CSS قوي لإظهار السايدبار وتنسيق العنوان الأزرق
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: white; }
     
-    /* ستايل العنوان الأزرق اللي عجبك */
-    .main-title {
-        font-size: 3rem;
+    /* جعل العنوان الأزرق يظهر بوضوح */
+    .blue-title {
+        color: #00CCFF;
+        font-size: 2.5rem;
         font-weight: bold;
-        color: #00CCFF; 
         text-align: center;
-        margin-top: -60px;
-        margin-bottom: 30px;
-        text-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+        margin-top: -50px;
+        text-shadow: 0 0 10px rgba(0, 204, 255, 0.4);
     }
 
-    /* توسيع المحتوى باش ميبقاش رقيق */
+    /* إظهار سهم السايدبار في الموبيل بزز */
+    [data-testid="stSidebarNav"] { display: block !important; }
+    button[kind="headerNoPadding"] { display: block !important; color: #00CCFF !important; }
+
+    /* تحسين العرض الكامل */
     [data-testid="stAppViewBlockContainer"] {
         max-width: 100% !important;
-        width: 100% !important;
-        padding: 1.5rem !important;
-    }
-
-    /* زر بايبال احترافي فالسيدبار */
-    .support-btn {
-        display: block; width: 100%; text-align: center; background-color: #0070ba; 
-        color: white !important; padding: 12px; border-radius: 10px; 
-        text-decoration: none; font-weight: bold; margin: 10px 0;
+        padding: 1rem !important;
     }
     
     header {visibility: hidden;}
@@ -44,37 +34,34 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. القائمة الجانبية (Sidebar) ودمج موديلات Groq
-with st.sidebar:
-    st.markdown('<h1 style="color: #00CCFF;">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
-    st.header("⚙️ الموديلات المتاحة")
-    
-    # الموديلات اللي عندك في Groq بظبط
+# 3. واجهة اختيار الموديلات (دابا غاتبان فوق الشات نيشان باش ما تدوخش)
+st.markdown('<div class="blue-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
+
+# اختيار الموديل من القائمة (مباشرة في الصفحة)
+col1, col2 = st.columns([1, 1])
+with col1:
     model_option = st.selectbox(
-        "اختر الموديل:",
-        (
-            "Llama 3.3 70B (قوي جداً)", 
-            "Qwen 2.5 32B (برمجة)", 
-            "Llama 3.2 11B (رؤية)",
-            "Whisper (صوت)"
-        )
+        "🧠 اختر العقل الذكي:",
+        ("Llama 3.3 70B", "Qwen 2.5 32B", "Llama 3.2 Vision", "Whisper Large"),
+        label_visibility="collapsed"
     )
-    
-    model_mapping = {
-        "Llama 3.3 70B (قوي جداً)": "llama-3.3-70b-versatile",
-        "Qwen 2.5 32B (برمجة)": "qwen-2.5-32b",
-        "Llama 3.2 11B (رؤية)": "llama-3.2-11b-vision-preview",
-        "Whisper (صوت)": "whisper-large-v3"
-    }
-    selected_model = model_mapping[model_option]
-    
-    st.divider()
-    st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ دعم المشروع</a>', unsafe_allow_html=True)
 
-# عرض العنوان الرئيسي بالأزرق
-st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
+# ربط الموديلات بـ Groq
+model_mapping = {
+    "Llama 3.3 70B": "llama-3.3-70b-versatile",
+    "Qwen 2.5 32B": "qwen-2.5-32b",
+    "Llama 3.2 Vision": "llama-3.2-11b-vision-preview",
+    "Whisper Large": "whisper-large-v3"
+}
+selected_model = model_mapping[model_option]
 
-# 4. الربط الحقيقي مع Groq API
+# 4. السايدبار كاحتياط فيه زر الدعم
+with st.sidebar:
+    st.title("Settings")
+    st.write(f"الموديل الحالي: {selected_model}")
+    st.markdown('<a href="https://paypal.me/aipromptmoney" style="display:block; background:#0070ba; color:white; padding:10px; border-radius:10px; text-align:center; text-decoration:none; font-weight:bold;">☕ Buy me a Coffee</a>', unsafe_allow_html=True)
+
+# 5. نظام الشات
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 if "messages" not in st.session_state:
@@ -84,7 +71,6 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# معالجة الشات
 if prompt := st.chat_input("سول أݣورام..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -92,17 +78,13 @@ if prompt := st.chat_input("سول أݣورام..."):
 
     with st.chat_message("assistant"):
         try:
-            # تعليمات الذكاء
-            system_msg = "You are AGORAM AI. Professional assistant. Respond in user language."
-            
             chat_completion = client.chat.completions.create(
                 messages=[
-                    {"role": "system", "content": system_msg},
+                    {"role": "system", "content": "You are AGORAM AI. Concise and smart."},
                     *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
                 ],
-                model=selected_model, # الموديل اللي اختاريتي من السايدبار
+                model=selected_model,
             )
-            
             ans = chat_completion.choices[0].message.content
             st.markdown(ans)
             st.session_state.messages.append({"role": "assistant", "content": ans})
