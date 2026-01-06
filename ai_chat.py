@@ -17,7 +17,7 @@ st.markdown("""
         display: block;
         width: 100%;
         text-align: center;
-        background-color: #0070ba; /* لون بايبال */
+        background-color: #0070ba; /* لون بايبال الرسمي */
         color: white !important;
         padding: 12px;
         border-radius: 10px;
@@ -35,7 +35,7 @@ st.title("AGORAM AI 🤖")
 # 2. زر PayPal فـ Sidebar وفي أسفل الصفحة للموبيل
 with st.sidebar:
     st.markdown('### Support the Project')
-    st.markdown('<a href="https://www.paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ Support via PayPal</a>', unsafe_allow_html=True)
+    st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ Support via PayPal</a>', unsafe_allow_html=True)
     st.caption("دعمك كيخلي أݣورام يطور ويستمر.")
 
 # 3. الربط مع Groq (الموديل الأقوى)
@@ -69,7 +69,7 @@ if prompt := st.chat_input("سول أݣورام أو ابحث..."):
                     {"role": "system", "content": system_instruction},
                     *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
                 ],
-                model="llama-3.3-70b-versatile", # الموديل اللي كيدعم البحث
+                model="llama-3.3-70b-versatile", # الموديل اللي كيدعم البحث والسرعة
             )
             
             ans = chat_completion.choices[0].message.content
@@ -79,4 +79,4 @@ if prompt := st.chat_input("سول أݣورام أو ابحث..."):
             st.error(f"Error: {e}")
 
 # إضافة الزر فـ الأسفل باش يبان فـ الموبيل بلا ما يفتح Sidebar
-st.markdown('<a href="https://www.paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ Support via PayPal</a>', unsafe_allow_html=True)
+st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ Support via PayPal</a>', unsafe_allow_html=True)
