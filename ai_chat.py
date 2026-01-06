@@ -1,95 +1,90 @@
 import streamlit as st
-from groq import Groq
+import time
 
-# إعدادات الصفحة - Wide Layout باش يظهر السايدبار فالموبيل
-st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide")
+# إعدادات الصفحة
+st.set_page_config(
+    page_title="AGORAM AI",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded" # القائمة الجانبية كتبان من الدقة الأولى
+)
 
-# ستايل CSS احترافي لضبط القياسات واتجاه النص
+# تصميم الـ CSS لتعديل الألوان والواجهة
 st.markdown("""
     <style>
-    /* خلفية داكنة وتنسيق النصوص */
-    .stApp { background-color: #0E1117; color: white; }
+    /* تغيير لون العنوان الرئيسي للأزرق الفاتح */
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #00CCFF; /* اللون الأزرق الفاتح */
+        text-align: center;
+        margin-top: -50px;
+        margin-bottom: 25px;
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    }
     
-    /* فرض ظهور السهم ديال السايدبار فالموبيل */
-    [data-testid="stSidebarNav"] { display: block !important; }
-    
-    /* توسيع الحاوية باش تعمر الشاشة وتحيد الرقة */
+    /* تحسين شكل القائمة الجانبية */
+    [data-testid="stSidebar"] {
+        background-color: #111b21; /* لون داكن احترافي */
+        border-right: 1px solid #00CCFF; /* خط أزرق خفيف في الجنب */
+    }
+
+    /* تعديل مساحة المحتوى */
     [data-testid="stAppViewBlockContainer"] {
-        max-width: 100% !important;
-        width: 100% !important;
-        padding: 1rem !important;
+        padding-top: 3rem !important;
+        max-width: 900px !important;
+        margin: auto;
     }
 
-    /* تحسين شكل الرسائل */
-    .stChatMessage { border-radius: 12px; margin: 8px 0; border: 1px solid #2d2d2d; }
-    .stChatMessage[data-testid="stChatMessageAssistant"] { border-left: 4px solid #ff4b4b; background-color: #161b22; }
-
-    /* ستايل زر بايبال */
-    .support-btn {
-        display: block; width: 100%; text-align: center; background-color: #0070ba; 
-        color: white !important; padding: 12px; border-radius: 10px; 
-        text-decoration: none; font-weight: bold; margin: 10px 0;
+    /* شكل فقاعات الدردشة */
+    .stChatMessage {
+        border-radius: 15px;
+        padding: 10px;
+        margin-bottom: 10px;
     }
-    
-    /* إخفاء الزوائد لزيادة الاحترافية */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# القائمة الجانبية (Settings & Support)
+# --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
-    st.title("AGORAM AI 🤖")
-    st.header("⚙️ Settings")
-    
-    # اختيار الموديل من القائمة
-    model_option = st.selectbox(
-        "Choose AI Intelligence:",
-        ("Llama 3.3 70B (Fast & Smart)", "Qwen 2.5 32B (Coding)", "Llama 3.2 Vision")
-    )
-    
-    model_mapping = {
-        "Llama 3.3 70B (Fast & Smart)": "llama-3.3-70b-versatile",
-        "Qwen 2.5 32B (Coding)": "qwen-2.5-32b",
-        "Llama 3.2 Vision": "llama-3.2-11b-vision-preview"
-    }
-    selected_model = model_mapping[model_option]
-    
-    st.divider()
-    st.markdown("### Support the Project")
-    st.markdown('<a href="https://paypal.me/aipromptmoney" target="_blank" class="support-btn">☕ Support via PayPal</a>', unsafe_allow_html=True)
-    st.caption("دعمك كيخلينا نستمروا فالتطوير.")
+    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712035.png", width=100) # أيقونة اختيارية
+    st.title("الإعدادات")
+    st.info("مرحباً بك في AGORAM AI. يمكنك مسح المحادثة أو تغيير الإعدادات من هنا.")
+    if st.button("🗑️ مسح المحادثة"):
+        st.session_state.messages = []
+        st.rerun()
 
-# إدارة المحادثة
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+# --- واجهة التطبيق الرئيسية ---
+st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
 
+# تهيئة سجل الرسائل إذا كان فارغاً
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# عرض الرسائل السابقة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("سول أݣورام..."):
+# استقبال رسالة المستخدم
+if prompt := st.chat_input("كيف يمكنني مساعدتك اليوم؟"):
+    # إضافة رسالة المستخدم للسجل
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # محاكاة رد الذكاء الاصطناعي (أورام AI)
     with st.chat_message("assistant"):
-        try:
-            # عقلية ذكية مرنة لغوياً
-            system_instruction = "You are AGORAM AI. Answer in the user's language. Be smart and concise."
-            
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_instruction},
-                    *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-                ],
-                model=selected_model,
-            )
-            
-            ans = chat_completion.choices[0].message.content
-            st.markdown(ans)
-            st.session_state.messages.append({"role": "assistant", "content": ans})
-        except Exception as e:
-            st.error(f"Error: {e}")
+        message_placeholder = st.empty()
+        full_response = ""
+        # هنا يمكنك ربط الكود بـ API الخاص بـ Gemini أو أي نموذج آخر
+        assistant_response = f"أنا AGORAM AI، قمت باستلام رسالتك: '{prompt}'. كيف يمكنني تطوير خدمتي لك؟"
+        
+        for chunk in assistant_response.split():
+            full_response += chunk + " "
+            time.sleep(0.05)
+            message_placeholder.markdown(full_response + "▌")
+        message_placeholder.markdown(full_response)
+    
+    # إضافة رد المساعد للسجل
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
