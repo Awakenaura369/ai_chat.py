@@ -1,67 +1,70 @@
 import streamlit as st
 from groq import Groq
 
-# 1. Page Configuration - Sidebar starts expanded on desktop
-st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
+# 1. إعدادات الصفحة والأيقونة
+st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide")
 
-# 2. Add Meta Tags for Custom Icon & PWA
+# 2. Meta Tags للأيقونة والـ PWA
 st.markdown("""
     <head>
         <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712035.png">
         <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712035.png">
         <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     </head>
 """, unsafe_allow_html=True)
 
-# 3. CSS Styling - Keeping the Sky Blue Title
+# 3. CSS المطور للعنوان وزر الدعم
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: white; }
     .main-title {
         font-size: 3rem; font-weight: bold; color: #00CCFF; 
-        text-align: center; margin-top: -60px; margin-bottom: 30px;
+        text-align: center; margin-top: -60px; margin-bottom: 5px;
         text-shadow: 0 0 15px rgba(0, 204, 255, 0.4);
     }
-    
-    /* Make sure sidebar arrow is visible on mobile */
-    [data-testid="stSidebarNav"] { display: block !important; }
-
-    [data-testid="stAppViewBlockContainer"] {
-        max-width: 100% !important; padding: 1.5rem !important;
+    .beta-text {
+        text-align: center; color: #8892b0; font-size: 1rem; 
+        margin-bottom: 30px; font-style: italic;
+    }
+    .support-btn {
+        display: block; background: #FFDD00; color: #000000 !important; 
+        padding: 10px; border-radius: 10px; text-align: center; 
+        text-decoration: none; font-weight: bold; margin-top: 20px;
     }
     header {visibility: hidden;}
     footer {visibility: hidden;}
+    [data-testid="stSidebarNav"] { display: block !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 4. Sidebar: Model Selection moved here
+# 4. القائمة الجانبية (Sidebar)
 with st.sidebar:
-    st.markdown('<h1 style="color: #00CCFF;">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
-    st.header("Settings")
-    
-    # Model Selection inside Sidebar
+    st.markdown('<h2 style="color: #00CCFF;">AGORAM AI 🤖</h2>', unsafe_allow_html=True)
+    st.write("---")
+    # اختيار الموديل
     model_option = st.selectbox(
-        "Choose AI Brain:",
-        ("Llama 3.3 70B (Versatile)", "Qwen 2.5 32B (Coder)", "Llama 3.2 11B (Vision)", "Whisper Large v3 (Audio)"),
+        "Select AI Brain:",
+        ("Llama 3.3 70B (Versatile)", "Qwen 2.5 32B (Coder)", "Llama 3.2 11B (Vision)"),
         index=0
     )
     
-    model_mapping = {
-        "Llama 3.3 70B (Versatile)": "llama-3.3-70b-versatile",
-        "Qwen 2.5 32B (Coder)": "qwen-2.5-32b",
-        "Llama 3.2 11B (Vision)": "llama-3.2-11b-vision-preview",
-        "Whisper Large v3 (Audio)": "whisper-large-v3"
-    }
-    selected_model = model_mapping[model_option]
-    
-    st.divider()
-    st.markdown('<a href="https://paypal.me/aipromptmoney" style="display:block; background:#0070ba; color:white; padding:12px; border-radius:10px; text-align:center; text-decoration:none; font-weight:bold;">☕ Support Project</a>', unsafe_allow_html=True)
+    st.write("---")
+    st.write("☕ **Support the Creator**")
+    st.markdown('<a href="https://paypal.me/aipromptmoney" class="support-btn">Buy me a Coffee ☕</a>', unsafe_allow_html=True)
+    st.caption("Help us keep AGORAM AI free and fast!")
 
-# 5. Main Title on Page
+# 5. الواجهة الرئيسية
 st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
+st.markdown('<div class="beta-text">🚀 <b>Beta Version:</b> Currently testing our AI models. More features coming soon!</div>', unsafe_allow_html=True)
 
-# 6. Groq Chat Logic
+# 6. إعدادات Groq والشات
+model_mapping = {
+    "Llama 3.3 70B (Versatile)": "llama-3.3-70b-versatile",
+    "Qwen 2.5 32B (Coder)": "qwen-2.5-32b",
+    "Llama 3.2 11B (Vision)": "llama-3.2-11b-vision-preview"
+}
+selected_model = model_mapping[model_option]
+
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 if "messages" not in st.session_state: st.session_state.messages = []
 
