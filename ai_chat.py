@@ -1,90 +1,73 @@
 import streamlit as st
 from groq import Groq
+from supabase import create_client, Client
 
-# 1. إعدادات الصفحة والهوية العالمية
-st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="wide")
+# 1. جلب السوارت من Streamlit Secrets
+url: str = st.secrets["SUPABASE_URL"]
+key: str = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
-# 2. CSS المطور للواجهة والزر المركزي
-st.markdown("""
-    <style>
-    .stApp { background-color: #0E1117; color: white; }
-    .main-title {
-        font-size: 3.5rem; font-weight: bold; color: #00CCFF; 
-        text-align: center; margin-top: -60px; margin-bottom: 5px;
-        text-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
-    }
-    .beta-text {
-        text-align: center; color: #8892b0; font-size: 1.1rem; 
-        margin-bottom: 15px; font-style: italic;
-    }
-    .support-container {
-        display: flex; justify-content: center; margin-bottom: 35px;
-    }
-    .support-btn {
-        background: #FFDD00; color: #000000 !important; 
-        padding: 10px 25px; border-radius: 25px; text-align: center; 
-        text-decoration: none; font-weight: bold; font-size: 1rem;
-        box-shadow: 0 4px 15px rgba(255, 221, 0, 0.3);
-        transition: transform 0.2s;
-    }
-    .support-btn:hover { transform: scale(1.05); }
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
+# إعداد الصفحة
+st.set_page_config(page_title="AGORAM AI 🤖", layout="wide")
 
-# 3. السايدبار لاختيار الموديلات
-with st.sidebar:
-    st.markdown('<h2 style="color: #00CCFF;">AGORAM AI 🤖</h2>', unsafe_allow_html=True)
-    st.write("---")
-    model_option = st.selectbox(
-        "Select AI Engine:",
-        ("Llama 3.3 70B (Global Leader)", "Qwen 2.5 32B (Coding Pro)", "Llama 3.2 11B (Vision)"),
-        index=0
-    )
-    st.write("---")
-    st.caption("Status: Global Beta v1.2")
+# 2. وظيفة لجلب التاريخ من الداتابايز
+def load_chat_history():
+    try:
+        # كنجيبو كاع الميساجات مرتبين من القديم للجديد
+        response = supabase.table("chat_history").select("*").order("created_at").execute()
+        return response.data
+    except Exception as e:
+        st.error(f"Error loading history: {e}")
+        return []
 
-# 4. الواجهة الرئيسية
-st.markdown('<div class="main-title">AGORAM AI 🤖</div>', unsafe_allow_html=True)
-st.markdown('<div class="beta-text">🚀 <b>Beta Version:</b> Currently testing our AI models. More features coming soon!</div>', unsafe_allow_html=True)
+# 3. وظيفة لحفظ الميساج الجديد فـ Supabase
+def save_message(user_msg, ai_res):
+    try:
+        supabase.table("chat_history").insert({
+            "message": user_msg, 
+            "response": ai_res
+        }).execute()
+    except Exception as e:
+        st.warning(f"Note: Database not saved: {e}")
 
-# زر الدعم المركزي
-st.markdown("""
-    <div class="support-container">
-        <a href="https://paypal.me/aipromptmoney" class="support-btn">☕ Buy me a Coffee</a>
-    </div>
-""", unsafe_allow_html=True)
+# واجهة التطبيق
+st.markdown('<h1 style="text-align: center; color: #00CCFF;">AGORAM AI 🤖</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center;">الذكاء الاصطناعي بذاكرة قوية</p>', unsafe_allow_html=True)
 
-# 5. منطق الشات مع إصلاح اللغة
-model_mapping = {
-    "Llama 3.3 70B (Global Leader)": "llama-3.3-70b-versatile",
-    "Qwen 2.5 32B (Coding Pro)": "qwen-2.5-32b",
-    "Llama 3.2 11B (Vision)": "llama-3.2-11b-vision-preview"
-}
-selected_model = model_mapping[model_option]
+# 4. تحميل التاريخ فـ البداية
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+    db_messages = load_chat_history()
+    if db_messages:
+        for m in db_messages:
+            st.session_state.messages.append({"role": "user", "content": m["message"]})
+            st.session_state.messages.append({"role": "assistant", "content": m["response"]})
 
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-if "messages" not in st.session_state: st.session_state.messages = []
-
+# عرض المحادثات السابقة
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]): st.markdown(message["content"])
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
+# إدخال ميساج جديد
 if prompt := st.chat_input("Ask AGORAM anything..."):
+    # عرض ميساج المستخدم
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
-    
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # طلب الرد من Groq
     with st.chat_message("assistant"):
-        try:
-            # System Prompt المطور لضبط اللغة
-            res = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": "You are AGORAM AI, a professional global assistant. ALWAYS respond in the EXACT SAME language the user uses. If they speak Arabic, answer only in Arabic. Be concise and smart."},
-                    *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-                ],
-                model=selected_model,
-            )
-            ans = res.choices[0].message.content
-            st.markdown(ans)
-            st.session_state.messages.append({"role": "assistant", "content": ans})
-        except Exception as e: st.error(f"Error: {e}")
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        res = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are AGORAM AI. Always respond in the same language as the user."},
+                *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+            ],
+            model="llama-3.3-70b-versatile",
+        )
+        ans = res.choices[0].message.content
+        st.markdown(ans)
+        
+        # 5. الحفظ فـ الداتابايز باش المرة الجاية تلقاها
+        save_message(prompt, ans)
+        st.session_state.messages.append({"role": "assistant", "content": ans})
