@@ -44,9 +44,6 @@ st.markdown("""
         justify-content: center;
         margin-bottom: 40px;
     }
-    .coffee-link {
-        text-decoration: none;
-    }
     .btn-yellow {
         background-color: #FFDD00;
         color: black;
@@ -58,6 +55,7 @@ st.markdown("""
         align-items: center;
         gap: 10px;
         box-shadow: 0px 6px 20px rgba(255, 221, 0, 0.4);
+        text-decoration: none !important;
     }
     
     /* ستايل الميساجات */
@@ -65,25 +63,40 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) مع اللوجين الاختياري ---
+# --- القائمة الجانبية (Sidebar) مع نظام الحسابات المطور ---
 with st.sidebar:
     st.title("📂 Workspace")
     if "user" not in st.session_state:
         st.info("💡 Login to save your chat history.")
-        with st.expander("🔐 Account Access"):
+        with st.expander("🔐 Account Access", expanded=True):
             mode = st.radio("Choose:", ["Login", "Sign Up"])
-            email = st.text_input("Email")
+            email = st.text_input("Email", placeholder="example@mail.com")
             password = st.text_input("Password", type="password")
-            if st.button("Confirm"):
+            
+            if st.button("Confirm Action"):
                 try:
-                    if mode == "Login":
+                    if mode == "Sign Up":
+                        res = supabase.auth.sign_up({"email": email, "password": password})
+                        if res.user:
+                            st.session_state.user = res.user
+                            st.success("Account created!")
+                            st.rerun()
+                        else:
+                            st.warning("Check your email if confirmation is required.")
+                    
+                    elif mode == "Login":
                         res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        st.session_state.user = res.user
+                        if res.user:
+                            st.session_state.user = res.user
+                            st.rerun()
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if "invalid login credentials" in error_msg:
+                        st.error("Email or password incorrect.")
+                    elif "already registered" in error_msg:
+                        st.error("This email is already in use.")
                     else:
-                        supabase.auth.sign_up({"email": email, "password": password})
-                        st.success("Check your email for confirmation!")
-                    st.rerun()
-                except: st.error("Authentication failed. Check your info.")
+                        st.error(f"Error: {str(e)}")
     else:
         st.write(f"Logged in: **{st.session_state.user.email}**")
         if st.button("🚪 Logout"):
@@ -97,18 +110,18 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# --- الواجهة الرئيسية ---
+# --- الواجهة الرئيسية (AGORAM AI) ---
 
-# 1. عنوان AGORAM مع اللوجو الصغير
+# 1. العنوان واللوغو
 st.markdown('<div class="main-title">AGORAM AI <span style="font-size: 45px;">🤖</span></div>', unsafe_allow_html=True)
 
-# 2. نص البيتا (نسخة طبق الأصل من الصورة)
+# 2. نص البيتا
 st.markdown('<p class="beta-tag">🚀 Beta Version: Currently testing our AI models. More features coming soon!</p>', unsafe_allow_html=True)
 
-# 3. زر القهيوة المربوط بـ PayPal (siddear)
+# 3. زر القهيوة (PayPal: siddear)
 st.markdown("""
     <div class="coffee-container">
-        <a href="https://www.paypal.me/siddear" target="_blank" class="coffee-link">
+        <a href="https://www.paypal.me/siddear" target="_blank" style="text-decoration: none;">
             <div class="btn-yellow">
                 <span style="font-size: 20px;">☕</span> Buy me a Coffee
             </div>
@@ -121,13 +134,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
     if "user" in st.session_state:
         try:
+            # جلب التاريخ من Supabase
             res = supabase.table("chat_history").select("*").eq("user_id", st.session_state.user.id).order("created_at").execute()
             for m in res.data:
                 st.session_state.messages.append({"role": "user", "content": m["message"]})
                 st.session_state.messages.append({"role": "assistant", "content": m["response"]})
         except: pass
 
-# عرض تاريخ المحادثة
+# عرض الميساجات
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -141,13 +155,13 @@ if prompt := st.chat_input("Ask AGORAM anything..."):
     with st.chat_message("assistant"):
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
         
-        # تعليمات الذكاء الاصطناعي (Adaptive System Prompt)
+        # نظام الذكاء المتأقلم
         system_instruction = """
         You are AGORAM AI. You are highly adaptive and intelligent. 
         Rules:
-        1. LANGUAGE: Always respond in the EXACT same language/dialect the user uses (Darija, Arabic, English, French, etc.).
-        2. INTELLECT: Match the user's intellectual level. If they are simple, be simple. If they are deep/academic, be professional.
-        3. ATTITUDE: Be helpful, Moroccan at heart, but global in knowledge.
+        1. LANGUAGE: Always respond in the EXACT same language or dialect the user uses (Darija, Arabic, English, French, etc.).
+        2. INTELLECT: Match the user's intellectual level. Be simple if they are, and professional if they are.
+        3. ATTITUDE: Be helpful, friendly, and Moroccan at heart.
         """
 
         res = client.chat.completions.create(
@@ -158,7 +172,7 @@ if prompt := st.chat_input("Ask AGORAM anything..."):
         ans = res.choices[0].message.content
         st.markdown(ans)
         
-        # حفظ فـ الداتابايز إيلا كان مسجل
+        # حفظ فـ الداتابايز للمستخدمين المسجلين
         if "user" in st.session_state:
             try:
                 supabase.table("chat_history").insert({
