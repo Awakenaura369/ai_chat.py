@@ -2,15 +2,16 @@ import streamlit as st
 from groq import Groq
 from supabase import create_client, Client
 from functools import lru_cache
-import re
 import bcrypt
+import re
+import pandas as pd
 
 # --- Setup Supabase ---
 url: str = st.secrets["SUPABASE_URL"]
 key: str = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# --- Streamlit page config ---
+# --- Page config ---
 st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="centered")
 
 # --- CSS Styling ---
@@ -25,9 +26,38 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar: Workspace + Auth ---
+# --- Sidebar: Workspace + Auth + Admin ---
 with st.sidebar:
     st.title("📂 Workspace")
+    
+    # --- Admin Dashboard Access ---
+    admin_emails = ["admin@example.com"]  # set your admin emails
+    is_admin = "user" in st.session_state and st.session_state.user.email in admin_emails
+
+    if is_admin:
+        st.subheader("📊 Dashboard Analytics")
+        try:
+            users_res = supabase.auth.admin.list_users()
+            users_data = users_res.data
+            user_count = len(users_data)
+            st.metric("Total Users", user_count)
+
+            chat_data = supabase.table("chat_history").select("*").execute()
+            df = pd.DataFrame(chat_data.data)
+            if not df.empty:
+                chat_per_user = df.groupby("user_id")["message"].count().reset_index()
+                st.subheader("Chats per User")
+                st.dataframe(chat_per_user)
+
+                st.subheader("Top 5 Most Active Users")
+                top_users = chat_per_user.sort_values("message", ascending=False).head(5)
+                st.bar_chart(top_users.set_index("user_id")["message"])
+
+                st.subheader("Average Message Length")
+                df["msg_len"] = df["message"].apply(lambda x: len(str(x)))
+                st.metric("Avg. User Msg Length", round(df["msg_len"].mean(),1))
+        except Exception as e:
+            st.error(f"Dashboard Error: {str(e)}")
     
     if "user" not in st.session_state:
         st.info("💡 Login to save your chat history.")
@@ -35,13 +65,13 @@ with st.sidebar:
             mode = st.radio("Choose:", ["Login", "Sign Up"])
             email = st.text_input("Email", placeholder="example@mail.com")
             password = st.text_input("Password", type="password")
-            
+
             def validate_email(email):
                 return re.match(r"[^@]+@[^@]+\.[^@]+", email)
-            
+
             def validate_password(pw):
                 return len(pw) >= 6
-            
+
             if st.button("Confirm Action"):
                 if not validate_email(email):
                     st.error("Invalid email format.")
@@ -56,8 +86,6 @@ with st.sidebar:
                                 st.session_state.user = res.user
                                 st.success("Account created!")
                                 st.rerun()
-                            else:
-                                st.warning("Check your email if confirmation is required.")
                         elif mode == "Login":
                             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                             if res.user:
@@ -70,8 +98,7 @@ with st.sidebar:
         if st.button("🚪 Logout"):
             try:
                 supabase.auth.sign_out()
-            except:
-                pass
+            except: pass
             st.session_state.pop("user", None)
             st.session_state.pop("messages", None)
             st.rerun()
@@ -108,7 +135,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- Advanced Groq Chat with full context + caching ---
+# --- Advanced Groq Chat ---
 @lru_cache(maxsize=512)
 def get_groq_response(messages_tuple):
     all_msgs = " ".join(messages_tuple)
