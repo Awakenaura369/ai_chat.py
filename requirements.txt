@@ -2,8 +2,6 @@ streamlit>=1.30.0
 groq
 supabase>=2.0.0
 bcrypt
+pandas
 Pillow
 duckduckgo-search
-
-
-
