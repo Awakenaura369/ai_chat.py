@@ -1,9 +1,4 @@
 streamlit>=1.30.0
-groq
-supabase>=2.0.0
-bcrypt
-pandas
-Pillow
-duckduckgo-search
+groq>=1.0.0
 requests>=2.31.0
 sqlite3
