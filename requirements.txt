@@ -5,3 +5,5 @@ bcrypt
 pandas
 Pillow
 duckduckgo-search
+requests>=2.31.0
+sqlite3
