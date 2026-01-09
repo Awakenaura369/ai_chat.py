@@ -1,179 +1,141 @@
 import streamlit as st
 from groq import Groq
-from supabase import create_client, Client
-from functools import lru_cache
-import bcrypt
-import re
-import pandas as pd
+import datetime
+import requests
+import sqlite3
 
-# --- Setup Supabase ---
-url: str = st.secrets["SUPABASE_URL"]
-key: str = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
+# --- Page Config ---
+st.set_page_config(page_title="AGORAM AI", page_icon="🧠", layout="wide")
 
-# --- Page config ---
-st.set_page_config(page_title="AGORAM AI", page_icon="🤖", layout="centered")
+# --- Database Setup (SQLite for demo, can be Supabase/PostgreSQL) ---
+conn = sqlite3.connect("agoram_ai.db", check_same_thread=False)
+c = conn.cursor()
+c.execute('''
+CREATE TABLE IF NOT EXISTS usage_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,
+    prompt TEXT,
+    response TEXT,
+    type TEXT
+)
+''')
+conn.commit()
 
-# --- CSS Styling ---
-st.markdown("""
-<style>
-.stApp { background-color: #0e1117; }
-.main-title { text-align: center; color: #00CCFF; font-size:50px; font-weight:bold; text-shadow:0px 0px 20px #00CCFF; margin-bottom:5px; display:flex; justify-content:center; align-items:center; gap:15px;}
-.beta-tag { text-align:center; color:#8892b0; font-size:18px; line-height:1.6; margin-bottom:30px; font-style:italic;}
-.coffee-container { display:flex; justify-content:center; margin-bottom:40px;}
-.btn-yellow { background-color:#FFDD00; color:black; padding:14px 30px; border-radius:35px; font-weight:bold; font-size:18px; display:flex; align-items:center; gap:10px; box-shadow:0px 6px 20px rgba(255,221,0,0.4); text-decoration:none !important;}
-.stChatMessage { border-radius:15px; background-color:#1a1c23; border:1px solid #2d2e3a;}
-</style>
-""", unsafe_allow_html=True)
-
-# --- Sidebar: Workspace + Auth + Admin ---
-with st.sidebar:
-    st.title("📂 Workspace")
-    
-    # --- Admin Dashboard Access ---
-    admin_emails = ["admin@example.com"]  # set your admin emails
-    is_admin = "user" in st.session_state and st.session_state.user.email in admin_emails
-
-    if is_admin:
-        st.subheader("📊 Dashboard Analytics")
-        try:
-            users_res = supabase.auth.admin.list_users()
-            users_data = users_res.data
-            user_count = len(users_data)
-            st.metric("Total Users", user_count)
-
-            chat_data = supabase.table("chat_history").select("*").execute()
-            df = pd.DataFrame(chat_data.data)
-            if not df.empty:
-                chat_per_user = df.groupby("user_id")["message"].count().reset_index()
-                st.subheader("Chats per User")
-                st.dataframe(chat_per_user)
-
-                st.subheader("Top 5 Most Active Users")
-                top_users = chat_per_user.sort_values("message", ascending=False).head(5)
-                st.bar_chart(top_users.set_index("user_id")["message"])
-
-                st.subheader("Average Message Length")
-                df["msg_len"] = df["message"].apply(lambda x: len(str(x)))
-                st.metric("Avg. User Msg Length", round(df["msg_len"].mean(),1))
-        except Exception as e:
-            st.error(f"Dashboard Error: {str(e)}")
-    
-    if "user" not in st.session_state:
-        st.info("💡 Login to save your chat history.")
-        with st.expander("🔐 Account Access", expanded=True):
-            mode = st.radio("Choose:", ["Login", "Sign Up"])
-            email = st.text_input("Email", placeholder="example@mail.com")
-            password = st.text_input("Password", type="password")
-
-            def validate_email(email):
-                return re.match(r"[^@]+@[^@]+\.[^@]+", email)
-
-            def validate_password(pw):
-                return len(pw) >= 6
-
-            if st.button("Confirm Action"):
-                if not validate_email(email):
-                    st.error("Invalid email format.")
-                elif not validate_password(password):
-                    st.error("Password must be at least 6 characters.")
-                else:
-                    try:
-                        if mode == "Sign Up":
-                            hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-                            res = supabase.auth.sign_up({"email": email, "password": password})
-                            if res.user:
-                                st.session_state.user = res.user
-                                st.success("Account created!")
-                                st.rerun()
-                        elif mode == "Login":
-                            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                            if res.user:
-                                st.session_state.user = res.user
-                                st.rerun()
-                    except Exception as e:
-                        st.error(f"Auth Error: {str(e)}")
-    else:
-        st.write(f"Logged in: **{st.session_state.user.email}**")
-        if st.button("🚪 Logout"):
-            try:
-                supabase.auth.sign_out()
-            except: pass
-            st.session_state.pop("user", None)
-            st.session_state.pop("messages", None)
-            st.rerun()
-    
-    st.divider()
-    if st.button("➕ New Chat"):
-        st.session_state.messages = []
-        st.rerun()
-
-# --- Main UI ---
-st.markdown('<div class="main-title">AGORAM AI <span style="font-size:45px;">🤖</span></div>', unsafe_allow_html=True)
-st.markdown('<p class="beta-tag">🚀 Beta Version: Currently testing our AI models. More features coming soon!</p>', unsafe_allow_html=True)
-st.markdown("""
-<div class="coffee-container">
-<a href="https://www.paypal.me/siddear" target="_blank" style="text-decoration:none;">
-<div class="btn-yellow"><span style="font-size:20px;">☕</span> Buy me a Coffee</div>
-</a>
-</div>
-""", unsafe_allow_html=True)
-
-# --- Initialize messages ---
+# --- Session State Initialization ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    if "user" in st.session_state:
-        try:
-            res = supabase.table("chat_history").select("*").eq("user_id", st.session_state.user.id).order("created_at").execute()
-            for m in res.data:
-                st.session_state.messages.append({"role": "user", "content": m["message"]})
-                st.session_state.messages.append({"role": "assistant", "content": m["response"]})
-        except: pass
 
-# --- Display previous messages ---
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+if "api_calls_today" not in st.session_state:
+    st.session_state.api_calls_today = 0
+    st.session_state.last_call_date = datetime.date.today()
 
-# --- Advanced Groq Chat ---
-@lru_cache(maxsize=512)
-def get_groq_response(messages_tuple):
-    all_msgs = " ".join(messages_tuple)
+if "analytics" not in st.session_state:
+    st.session_state.analytics = {
+        "total_prompts": 0,
+        "top_prompts": {}
+    }
+
+# --- Constants ---
+DAILY_API_LIMIT = 5  # Limit free calls per user per day
+
+# --- Helper Functions ---
+def reset_daily_limit():
+    today = datetime.date.today()
+    if st.session_state.last_call_date != today:
+        st.session_state.api_calls_today = 0
+        st.session_state.last_call_date = today
+
+def log_usage(prompt, response, type_):
+    today = str(datetime.date.today())
+    c.execute("INSERT INTO usage_log (date, prompt, response, type) VALUES (?, ?, ?, ?)", (today, prompt, response, type_))
+    conn.commit()
+
+def ai_response(prompt):
+    reset_daily_limit()
+    if st.session_state.api_calls_today >= DAILY_API_LIMIT:
+        return "Daily limit reached. Try again tomorrow."
+    
+    # Update analytics
+    st.session_state.analytics["total_prompts"] += 1
+    st.session_state.analytics["top_prompts"][prompt] = st.session_state.analytics["top_prompts"].get(prompt, 0) + 1
+
     try:
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
         system_instruction = """
-        You are AGORAM AI, adaptive and Moroccan at heart.
-        1. LANGUAGE: match the user's language/dialect.
-        2. INTELLECT: adapt response complexity to user level.
-        3. CONTEXT: maintain entire conversation context.
-        4. ATTITUDE: helpful, friendly, professional.
+        You are AGORAM AI. Respond naturally and directly.
+        Do NOT use emojis or extra formatting.
+        Match the user's language and tone.
+        Adapt responses for user profession: doctor, engineer, programmer, content creator.
         """
-        response = client.chat.completions.create(
+        messages = [{"role": "system", "content": system_instruction}] + \
+                   [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages] + \
+                   [{"role": "user", "content": prompt}]
+        
+        res = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role":"system","content":system_instruction}] + 
-                     [{"role": "user", "content": msg} for msg in messages_tuple]
+            messages=messages
         )
-        return response.choices[0].message.content
+        answer = res.choices[0].message.content.strip()
+        st.session_state.api_calls_today += 1
+        log_usage(prompt, answer, "chat")
+        return answer
     except Exception as e:
         return f"Error: {str(e)}"
 
-# --- Chat input ---
-if prompt := st.chat_input("Ask AGORAM anything..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+def generate_image(prompt):
+    try:
+        api_key = st.secrets["GEMINI_API_KEY"].strip()
+        url = "https://api.gemini.ai/v1/images/generate"
+        payload = {"prompt": prompt, "size": "1024x1024"}
+        headers = {"Authorization": f"Bearer {api_key}"}
+        r = requests.post(url, json=payload, headers=headers).json()
+        image_url = r.get("data", [{}])[0].get("url")
+        if image_url:
+            log_usage(prompt, image_url, "image")
+        return image_url if image_url else "Image generation failed."
+    except Exception as e:
+        return f"Error generating image: {str(e)}"
 
-    with st.chat_message("assistant"):
-        user_msgs = tuple([m["content"] for m in st.session_state.messages if m["role"]=="user"])
-        ans = get_groq_response(user_msgs)
-        st.markdown(ans)
-        st.session_state.messages.append({"role": "assistant", "content": ans})
-        
-        if "user" in st.session_state:
-            try:
-                supabase.table("chat_history").insert({
-                    "message": prompt,
-                    "response": ans,
-                    "user_id": st.session_state.user.id
-                }).execute()
-            except: pass
+# --- UI ---
+st.title("AGORAM AI 🧠 | Professional Intelligence")
+
+tab1, tab2, tab3 = st.tabs(["Chat", "Generate Image", "Analytics"])
+
+# --- Chat Tab ---
+with tab1:
+    prompt = st.chat_input("Ask anything:")
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        response = ai_response(prompt)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+# --- Image Tab ---
+with tab2:
+    img_prompt = st.text_input("Enter prompt for image generation:")
+    if st.button("Generate Image"):
+        if img_prompt:
+            img_url = generate_image(img_prompt)
+            if img_url.startswith("http"):
+                st.image(img_url, use_column_width=True)
+            else:
+                st.error(img_url)
+
+# --- Analytics Tab ---
+with tab3:
+    st.subheader("📊 Usage Analytics")
+    st.write(f"API Calls Today: {st.session_state.api_calls_today}/{DAILY_API_LIMIT}")
+    st.write(f"Total Prompts Sent: {st.session_state.analytics['total_prompts']}")
+    
+    if st.session_state.analytics["top_prompts"]:
+        st.write("Top Prompts:")
+        for p, count in st.session_state.analytics["top_prompts"].items():
+            st.write(f"- {p}: {count} times")
+    
+    # Optional: Show all logs from DB
+    if st.checkbox("Show Full Logs"):
+        logs = c.execute("SELECT * FROM usage_log ORDER BY id DESC").fetchall()
+        st.dataframe(logs)
